@@ -54,7 +54,19 @@ export type GenerateLessonPlanOutput = z.infer<typeof GenerateLessonPlanOutputSc
  * @returns {Promise<GenerateLessonPlanOutput>} - A promise that resolves to the generated lesson plan.
  */
 export async function generateLessonPlan(input: GenerateLessonPlanInput): Promise<GenerateLessonPlanOutput> {
-  return generateLessonPlanFlow(input);
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY or GOOGLE_GENAI_API_KEY is missing');
+      throw new Error('API key configuration is missing');
+    }
+    
+    return await generateLessonPlanFlow(input);
+  } catch (error: any) {
+    console.error('Error in generateLessonPlan:', error);
+    // Throwing a simple error message that can be displayed by the client
+    throw new Error(error.message || 'Failed to generate lesson plan');
+  }
 }
 
 /**
