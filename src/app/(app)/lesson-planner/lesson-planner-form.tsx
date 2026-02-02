@@ -4,10 +4,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  generateLessonPlan,
-  GenerateLessonPlanOutput,
-} from '@/ai/flows/generate-lesson-plan';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,8 +32,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+// ✅ Correct API response type
+interface GenerateLessonPlanResponse {
+  lessonPlan: string;
+}
+
 export function LessonPlannerForm() {
-  const [result, setResult] = useState<GenerateLessonPlanOutput | null>(null);
+  // ✅ Changed state type from GenerateLessonPlanOutput to string
+  const [result, setResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -52,34 +54,49 @@ export function LessonPlannerForm() {
     },
   });
 
+  // ✅ Only ONE onSubmit function
   async function onSubmit(data: FormData) {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await generateLessonPlan(data);
-      setResult(response);
+      const response = await fetch('/api/generate-lesson-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate lesson plan');
+      }
+
+      const lessonPlanData: GenerateLessonPlanResponse = await response.json();
+      setResult(lessonPlanData.lessonPlan);
     } catch (error) {
-      console.error(error);
+      console.error('Error generating lesson plan:', error);
       toast({
         variant: "destructive",
         title: "An error occurred.",
-        description: "Failed to generate lesson plan. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate lesson plan. Please try again.",
       });
     } finally {
       setIsLoading(false);
     }
   }
 
+  // ✅ Changed result.lessonPlan to just result
   const createStudioLink = () => {
     if (!result) return '';
     const { subject, gradeLevel } = form.getValues();
     const params = new URLSearchParams({
       topic: subject,
       gradeLevel,
-      instructions: `Based on the following lesson plan, generate the necessary materials (e.g., flashcards, worksheets):\n\n${result.lessonPlan}`,
+      instructions: `Based on the following lesson plan, generate the necessary materials (e.g., flashcards, worksheets):\n\n${result}`,
     });
     return `/studio?${params.toString()}`;
-    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -203,7 +220,8 @@ export function LessonPlannerForm() {
             {result && (
                 <>
                     <CardContent className="p-6 max-h-[60vh] overflow-y-auto">
-                        <pre className="whitespace-pre-wrap font-body text-sm">{result.lessonPlan}</pre>
+                        {/* ✅ Changed from result.lessonPlan to just result */}
+                        <pre className="whitespace-pre-wrap font-body text-sm">{result}</pre>
                     </CardContent>
                     <CardFooter>
                         <Button asChild>
