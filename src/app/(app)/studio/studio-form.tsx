@@ -4,10 +4,6 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  generateLearningMaterial,
-  GenerateLearningMaterialOutput,
-} from '@/ai/flows/generate-learning-material';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,8 +22,13 @@ import { Loader2, Brush } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
+// ✅ Define API response type
+interface GenerateLearningMaterialResponse {
+  content: string;
+}
+
 const formSchema = z.object({
-  materialType: z.string().min(3, 'Please describe the material type.'),
+  materialType: z.string().min(3, 'Please describe material type.'),
   topic: z.string().min(3, 'A topic is required.'),
   gradeLevel: z.string().min(1, 'Grade level is required.'),
   instructions: z.string().optional(),
@@ -36,7 +37,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function StudioForm() {
-  const [result, setResult] = useState<GenerateLearningMaterialOutput | null>(null);
+  // ✅ Changed from GenerateLearningMaterialOutput to GenerateLearningMaterialResponse
+  const [result, setResult] = useState<GenerateLearningMaterialResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -47,7 +49,7 @@ export function StudioForm() {
       materialType: searchParams.get('materialType') || 'Flashcards',
       topic: searchParams.get('topic') || 'The Water Cycle',
       gradeLevel: searchParams.get('gradeLevel') || '4th Grade',
-      instructions: searchParams.get('instructions') || 'Create 10 flashcards. One side should have the term, the other side a simple definition.',
+      instructions: searchParams.get('instructions') || 'Create 10 flashcards. One side should have a term, other side a simple definition.',
     },
   });
 
@@ -60,12 +62,26 @@ export function StudioForm() {
     })
   }, [searchParams, form]);
 
+  // ✅ Fixed: Use fetch API instead of direct server call
   async function onSubmit(data: FormData) {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await generateLearningMaterial(data);
-      setResult(response);
+      const response = await fetch('/api/generate-material', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate material');
+      }
+
+      const materialData: GenerateLearningMaterialResponse = await response.json();
+      setResult(materialData);
     } catch (error) {
       console.error(error);
       toast({
