@@ -22,7 +22,7 @@ import { Loader2, Brush } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 
-// ✅ Define API response type
+// ✅ Define API response type (matches what API route returns)
 interface GenerateLearningMaterialResponse {
   content: string;
 }
@@ -37,7 +37,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function StudioForm() {
-  // ✅ Changed from GenerateLearningMaterialOutput to GenerateLearningMaterialResponse
+  // ✅ Changed state type to match API response
   const [result, setResult] = useState<GenerateLearningMaterialResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -62,7 +62,7 @@ export function StudioForm() {
     })
   }, [searchParams, form]);
 
-  // ✅ Fixed: Use fetch API instead of direct server call
+  // ✅ Fixed: Use fetch API to call the route
   async function onSubmit(data: FormData) {
     setIsLoading(true);
     setResult(null);
